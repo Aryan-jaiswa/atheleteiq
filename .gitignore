@@ -1,0 +1,90 @@
+# ----------------------
+# Node.js
+# ----------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ----------------------
+# Environment files
+# ----------------------
+.env
+.env.*
+!.env.example
+
+# ----------------------
+# Build / Output
+# ----------------------
+dist/
+build/
+out/
+.next/
+coverage/
+
+# ----------------------
+# Logs
+# ----------------------
+logs/
+*.log
+
+# ----------------------
+# OS files
+# ----------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------
+# Editor / IDE
+# ----------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ----------------------
+# TypeScript
+# ----------------------
+*.tsbuildinfo
+
+# ----------------------
+# Docker
+# ----------------------
+docker-data/
+*.pid
+
+# ----------------------
+# Cache
+# ----------------------
+.cache/
+.tmp/
+temp/
+
+# ----------------------
+# Testing
+# ----------------------
+jest-cache/
+coverage/
+
+# ----------------------
+# Misc
+# ----------------------
+*.local
+*.seed
+*.sqlite
+
+# ----------------------
+# Secrets / Keys
+# ----------------------
+*.pem
+*.key
+*.crt
+
+# ----------------------
+# Monorepo specific
+# ----------------------
+**/node_modules/
+**/dist/
+**/build/
+**/.next/

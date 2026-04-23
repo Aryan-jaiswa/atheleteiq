@@ -1,0 +1,62 @@
+{
+  "sport": "athletics",
+  "description": "Track and field athletics biomechanics benchmarks (sprinting, jumping, throwing)",
+  "ideal_ranges": {
+    "knee_flexion_left": {
+      "min": 60,
+      "max": 130,
+      "description": "Knee flexion during explosive sprint phase"
+    },
+    "knee_flexion_right": {
+      "min": 60,
+      "max": 130,
+      "description": "Knee flexion during explosive sprint phase"
+    },
+    "hip_angle_left": {
+      "min": 90,
+      "max": 150,
+      "description": "Hip angle - powerful hip drive for sprinting"
+    },
+    "hip_angle_right": {
+      "min": 90,
+      "max": 150,
+      "description": "Hip angle - powerful hip drive for sprinting"
+    },
+    "shoulder_angle_left": {
+      "min": 70,
+      "max": 160,
+      "description": "Shoulder angle - full arm drive engagement"
+    },
+    "shoulder_angle_right": {
+      "min": 70,
+      "max": 160,
+      "description": "Shoulder angle - full arm drive engagement"
+    },
+    "elbow_angle_left": {
+      "min": 70,
+      "max": 120,
+      "description": "Elbow flexion - powerful arm mechanics (~90°)"
+    },
+    "elbow_angle_right": {
+      "min": 70,
+      "max": 120,
+      "description": "Elbow flexion - powerful arm mechanics (~90°)"
+    },
+    "trunk_lean": {
+      "min": 2,
+      "max": 10,
+      "description": "Forward trunk lean - minimal for maximum speed"
+    },
+    "ankle_dorsiflexion_left": {
+      "min": 95,
+      "max": 120,
+      "description": "Ankle dorsiflexion - high foot clearance for sprinting"
+    },
+    "ankle_dorsiflexion_right": {
+      "min": 95,
+      "max": 120,
+      "description": "Ankle dorsiflexion - high foot clearance for sprinting"
+    }
+  },
+  "notes": "Ranges optimized for sprinting mechanics (high knee lift, explosive power). Long jump and high jump require higher knee flexion (140-150°). Throwing events require trunk rotation and shoulder external rotation."
+}

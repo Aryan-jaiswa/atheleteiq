@@ -1,0 +1,37 @@
+FROM node:20-alpine AS base
+
+FROM base AS builder
+WORKDIR /app
+COPY package*.json ./
+COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
+COPY shared/package.json ./shared/
+
+# Install dependencies using npm workspaces
+RUN npm install
+
+COPY . .
+
+# Build shared first, then frontend
+WORKDIR /app/shared
+RUN npm run build
+
+WORKDIR /app/frontend
+ENV NEXT_TELEMETRY_DISABLED 1
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Copy build artifacts
+COPY --from=builder /app/frontend/public ./public
+COPY --from=builder /app/frontend/.next/standalone ./
+COPY --from=builder /app/frontend/.next/static ./.next/static
+
+EXPOSE 3000
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["node", "server.js"]

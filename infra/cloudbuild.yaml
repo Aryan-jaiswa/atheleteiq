@@ -1,0 +1,143 @@
+substitutions:
+  _REGION: asia-south1
+  _REPOSITORY: athleteiq
+  _FRONTEND_SERVICE: athleteiq-frontend
+  _BACKEND_SERVICE: athleteiq-backend
+  _MOTION_SERVICE: athleteiq-motion
+  _WORKER_JOB: athleteiq-worker
+  _FRONTEND_DOMAIN: athleteiq.app
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  - id: build-frontend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - frontend/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_FRONTEND_SERVICE}:$COMMIT_SHA
+      - .
+
+  - id: build-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - backend/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_BACKEND_SERVICE}:$COMMIT_SHA
+      - .
+
+  - id: build-motion
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - motion-service/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_MOTION_SERVICE}:$COMMIT_SHA
+      - .
+
+  - id: build-worker
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - motion-service/worker/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WORKER_JOB}:$COMMIT_SHA
+      - .
+
+  - id: push-frontend
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_FRONTEND_SERVICE}:$COMMIT_SHA"]
+
+  - id: push-backend
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_BACKEND_SERVICE}:$COMMIT_SHA"]
+
+  - id: push-motion
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_MOTION_SERVICE}:$COMMIT_SHA"]
+
+  - id: push-worker
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WORKER_JOB}:$COMMIT_SHA"]
+
+  - id: deploy-backend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_BACKEND_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --port=4000
+      - --allow-unauthenticated
+      - --memory=512Mi
+      - --min-instances=0
+      - --max-instances=20
+      - --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,REDIS_URL=REDIS_URL:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GCS_PROJECT_ID=GCS_PROJECT_ID:latest,GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest,INTERNAL_SERVICE_TOKEN=INTERNAL_SERVICE_TOKEN:latest,CORS_ORIGIN=CORS_ORIGIN:latest
+
+  - id: deploy-motion
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_MOTION_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_MOTION_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --port=8000
+      - --no-allow-unauthenticated
+      - --memory=4Gi
+      - --cpu=2
+      - --min-instances=1
+      - --max-instances=10
+      - --timeout=3600
+      - --set-secrets=REDIS_URL=REDIS_URL:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,GCS_PROJECT_ID=GCS_PROJECT_ID:latest,GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest,REPORTS_BUCKET=REPORTS_BUCKET:latest,BACKEND_INTERNAL_URL=BACKEND_INTERNAL_URL:latest,INTERNAL_SERVICE_TOKEN=INTERNAL_SERVICE_TOKEN:latest
+
+  - id: deploy-frontend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_FRONTEND_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_FRONTEND_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --port=3000
+      - --allow-unauthenticated
+      - --memory=512Mi
+      - --min-instances=0
+      - --max-instances=20
+      - --set-env-vars=NEXT_PUBLIC_BACKEND_ORIGIN=https://${_BACKEND_SERVICE}-${_REGION}.a.run.app,NEXT_PUBLIC_API_BASE_URL=
+      - --set-secrets=NEXT_PUBLIC_FIREBASE_API_KEY=NEXT_PUBLIC_FIREBASE_API_KEY:latest,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:latest,NEXT_PUBLIC_FIREBASE_PROJECT_ID=NEXT_PUBLIC_FIREBASE_PROJECT_ID:latest,NEXT_PUBLIC_FIREBASE_APP_ID=NEXT_PUBLIC_FIREBASE_APP_ID:latest
+
+  - id: deploy-worker-job
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - deploy
+      - ${_WORKER_JOB}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WORKER_JOB}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --max-retries=3
+      - --tasks=1
+      - --task-timeout=3600
+      - --set-secrets=REDIS_URL=REDIS_URL:latest,BACKEND_INTERNAL_URL=BACKEND_INTERNAL_URL:latest,INTERNAL_SERVICE_TOKEN=INTERNAL_SERVICE_TOKEN:latest,GCS_PROJECT_ID=GCS_PROJECT_ID:latest,REPORTS_BUCKET=REPORTS_BUCKET:latest
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_FRONTEND_SERVICE}:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_BACKEND_SERVICE}:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_MOTION_SERVICE}:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WORKER_JOB}:$COMMIT_SHA

@@ -1,0 +1,13 @@
+{
+  "name": "@athleteiq/shared",
+  "version": "1.0.0",
+  "description": "Shared TypeScript definitions for AthleteIQ",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

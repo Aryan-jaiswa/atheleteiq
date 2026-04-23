@@ -1,0 +1,62 @@
+{
+  "sport": "football",
+  "description": "Football running and kicking biomechanics benchmarks",
+  "ideal_ranges": {
+    "knee_flexion_left": {
+      "min": 40,
+      "max": 120,
+      "description": "Knee flexion during running - dynamic range for different phases"
+    },
+    "knee_flexion_right": {
+      "min": 40,
+      "max": 120,
+      "description": "Knee flexion during running - dynamic range for different phases"
+    },
+    "hip_angle_left": {
+      "min": 100,
+      "max": 160,
+      "description": "Hip angle during running stride"
+    },
+    "hip_angle_right": {
+      "min": 100,
+      "max": 160,
+      "description": "Hip angle during running stride"
+    },
+    "shoulder_angle_left": {
+      "min": 80,
+      "max": 160,
+      "description": "Shoulder angle - arm drive during running"
+    },
+    "shoulder_angle_right": {
+      "min": 80,
+      "max": 160,
+      "description": "Shoulder angle - arm drive during running"
+    },
+    "elbow_angle_left": {
+      "min": 75,
+      "max": 130,
+      "description": "Elbow flexion - 90° optimal for arm drive"
+    },
+    "elbow_angle_right": {
+      "min": 75,
+      "max": 130,
+      "description": "Elbow flexion - 90° optimal for arm drive"
+    },
+    "trunk_lean": {
+      "min": 0,
+      "max": 15,
+      "description": "Forward trunk lean - minimal for upright running"
+    },
+    "ankle_dorsiflexion_left": {
+      "min": 85,
+      "max": 115,
+      "description": "Ankle dorsiflexion - foot clearance during swing phase"
+    },
+    "ankle_dorsiflexion_right": {
+      "min": 85,
+      "max": 115,
+      "description": "Ankle dorsiflexion - foot clearance during swing phase"
+    }
+  },
+  "notes": "Ranges optimized for straight-line running. Kicking requires specific knee flexion (160°+) and hip angle adjustments."
+}

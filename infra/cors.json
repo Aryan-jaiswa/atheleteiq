@@ -1,0 +1,16 @@
+[
+  {
+    "origin": [
+      "https://athleteiq.app",
+      "https://www.athleteiq.app",
+      "http://localhost:3000"
+    ],
+    "method": ["PUT", "POST", "GET", "HEAD", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "x-goog-resumable",
+      "x-goog-meta-athlete-id"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

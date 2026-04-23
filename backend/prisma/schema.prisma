@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ATHLETE
+  COACH
+  SCOUT
+  FEDERATION
+  ADMIN
+}
+
+enum DominantSide {
+  LEFT
+  RIGHT
+}
+
+enum VideoType {
+  TRAINING
+  MATCH
+}
+
+enum VideoStatus {
+  QUEUED
+  EXTRACTING_FRAMES
+  POSE_DETECTION
+  BIOMECHANICS
+  GEMINI_ANALYSIS
+  COMPLETE
+  FAILED
+}
+
+enum SelectionDecision {
+  SELECTED
+  WAITLISTED
+  REJECTED
+  PENDING
+}
+
+enum SelectionReadiness {
+  ELITE
+  NATIONAL_READY
+  DEVELOPMENT
+  NOT_READY
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      Role     @default(ATHLETE)
+  sport     String?
+  region    String?
+  state     String?
+  createdAt DateTime @default(now())
+
+  athleteProfile AthleteProfile?
+  videosUploaded Video[]         @relation("VideoUploader")
+  reportsGenerated SelectionReport[] @relation("ReportGenerator")
+
+  athletesCoached CoachAthleteLink[] @relation("CoachLink")
+  athletesScouted ScoutWatchlist[]   @relation("ScoutLink")
+  coachNotes      CoachNote[]
+}
+
+model AthleteProfile {
+  id                String       @id @default(uuid())
+  userId            String       @unique
+  user              User         @relation(fields: [userId], references: [id])
+  sport             String
+  dateOfBirth       DateTime?
+  height            Float?       // in cm
+  weight            Float?       // in kg
+  dominantSide      DominantSide?
+  region            String?
+  state             String?
+  bio               String?
+  profilePhotoUrl   String?
+  overallScore      Float?
+  selectionEligible Boolean      @default(true)
+
+  videos            Video[]
+  biomechanicsReports BiomechanicsReport[]
+  geminiAnalyses    GeminiAnalysis[]
+  selectionReports  SelectionReport[]
+  coachNotes        CoachNote[]
+
+  coaches           CoachAthleteLink[] @relation("AthleteLink")
+  scoutsWatching    ScoutWatchlist[]   @relation("AthleteScoutLink")
+}
+
+model Video {
+  id               String       @id @default(uuid())
+  athleteId        String
+  athlete          AthleteProfile @relation(fields: [athleteId], references: [id])
+  uploadedAt       DateTime     @default(now())
+  gcsRawUrl        String
+  type             VideoType
+  sport            String
+  durationSeconds  Float
+  status           VideoStatus  @default(QUEUED)
+  errorMessage     String?
+  frameCount       Int?
+  processedAt      DateTime?
+
+  uploaderId       String?
+  uploader         User?        @relation("VideoUploader", fields: [uploaderId], references: [id])
+
+  poseAnalysis     PoseAnalysis?
+  biomechanicsReport BiomechanicsReport?
+  geminiAnalysis   GeminiAnalysis?
+}
+
+model PoseAnalysis {
+  id                  String   @id @default(uuid())
+  videoId             String   @unique
+  video               Video    @relation(fields: [videoId], references: [id])
+  frameTimestamps     Json     // JSON array
+  keypointSeries      Json     // JSON: MediaPipe 33-keypoint data per frame
+  extractionDurationMs Int?
+}
+
+model BiomechanicsReport {
+  id                  String   @id @default(uuid())
+  videoId             String   @unique
+  video               Video    @relation(fields: [videoId], references: [id])
+  athleteId           String
+  athlete             AthleteProfile @relation(fields: [athleteId], references: [id])
+  
+  jointAngles         Json     // JSON: { knee_flexion_left, knee_flexion_right, hip_angle, shoulder_angle, elbow_angle }
+  velocityMetrics     Json     // JSON: { stride_velocity, arm_swing_velocity, center_of_mass_velocity }
+  accelerationMetrics Json     // JSON: peak values, deceleration patterns
+  
+  symmetryScore       Float    // 0-100
+  balanceScore        Float    // 0-100
+  reactionTime        Float?   // ms
+  explosiveness       Float    // 0-100
+  enduranceIndex      Float    // 0-100
+  techniqueScore      Float    // 0-100
+  
+  sport               String
+  createdAt           DateTime @default(now())
+}
+
+model GeminiAnalysis {
+  id                  String   @id @default(uuid())
+  videoId             String   @unique
+  video               Video    @relation(fields: [videoId], references: [id])
+  athleteId           String
+  athlete             AthleteProfile @relation(fields: [athleteId], references: [id])
+  
+  modelVersion        String
+  rawPrompt           String
+  rawResponse         String
+  
+  strengths           Json     // string[]
+  weaknesses          Json     // string[]
+  tacticalIntelligence String
+  movementEfficiency  String
+  coachNotes          String
+  
+  injuryRiskScore     Float    // 0-100
+  selectionReadiness  SelectionReadiness @default(DEVELOPMENT)
+  injuryRiskAreas     Json     // string[]
+  aiSummary           String   // 3-4 sentence plain English
+  trainingRecommendations Json? // string[]
+  
+  createdAt           DateTime @default(now())
+}
+
+model SelectionReport {
+  id                String            @id @default(uuid())
+  athleteId         String
+  athlete           AthleteProfile    @relation(fields: [athleteId], references: [id])
+  generatedAt       DateTime          @default(now())
+  
+  generatedById     String
+  generatedBy       User              @relation("ReportGenerator", fields: [generatedById], references: [id])
+  
+  compositeScore    Float             // 0-100
+  selectionDecision SelectionDecision @default(PENDING)
+  decisionReason    String?
+  
+  videoIds          Json              // array of video IDs
+  scoreBreakdown    Json?
+  reportPdfUrl      String?
+  
+  createdAt         DateTime          @default(now())
+}
+
+model CoachNote {
+  id        String         @id @default(uuid())
+  coachId   String
+  coach     User           @relation(fields: [coachId], references: [id])
+  athleteId String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id])
+  note      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model CoachAthleteLink {
+  coachId    String
+  coach      User           @relation("CoachLink", fields: [coachId], references: [id])
+  athleteId  String
+  athlete    AthleteProfile @relation("AthleteLink", fields: [athleteId], references: [id])
+  assignedAt DateTime       @default(now())
+
+  @@id([coachId, athleteId])
+}
+
+model ScoutWatchlist {
+  scoutId    String
+  scout      User           @relation("ScoutLink", fields: [scoutId], references: [id])
+  athleteId  String
+  athlete    AthleteProfile @relation("AthleteScoutLink", fields: [athleteId], references: [id])
+  notes      String?
+  addedAt    DateTime       @default(now())
+
+  @@id([scoutId, athleteId])
+}

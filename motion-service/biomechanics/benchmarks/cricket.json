@@ -1,0 +1,62 @@
+{
+  "sport": "cricket",
+  "description": "Cricket batting and bowling biomechanics benchmarks",
+  "ideal_ranges": {
+    "knee_flexion_left": {
+      "min": 15,
+      "max": 45,
+      "description": "Knee flexion in batting stance - slight to moderate bend"
+    },
+    "knee_flexion_right": {
+      "min": 15,
+      "max": 45,
+      "description": "Knee flexion in batting stance - slight to moderate bend"
+    },
+    "hip_angle_left": {
+      "min": 120,
+      "max": 160,
+      "description": "Hip extension in ready position"
+    },
+    "hip_angle_right": {
+      "min": 120,
+      "max": 160,
+      "description": "Hip extension in ready position"
+    },
+    "shoulder_angle_left": {
+      "min": 100,
+      "max": 170,
+      "description": "Shoulder abduction - bat at shoulder height"
+    },
+    "shoulder_angle_right": {
+      "min": 100,
+      "max": 170,
+      "description": "Shoulder abduction - bat at shoulder height"
+    },
+    "elbow_angle_left": {
+      "min": 70,
+      "max": 120,
+      "description": "Elbow flexion - bat control position"
+    },
+    "elbow_angle_right": {
+      "min": 70,
+      "max": 120,
+      "description": "Elbow flexion - bat control position"
+    },
+    "trunk_lean": {
+      "min": 5,
+      "max": 25,
+      "description": "Forward trunk lean - preparing for movement"
+    },
+    "ankle_dorsiflexion_left": {
+      "min": 80,
+      "max": 110,
+      "description": "Ankle dorsiflexion - ready for explosive movement"
+    },
+    "ankle_dorsiflexion_right": {
+      "min": 80,
+      "max": 110,
+      "description": "Ankle dorsiflexion - ready for explosive movement"
+    }
+  },
+  "notes": "Ranges optimized for batting stance assessment. Bowling requires different ranges for arm extension (elbow 160-180°) and trunk rotation."
+}
