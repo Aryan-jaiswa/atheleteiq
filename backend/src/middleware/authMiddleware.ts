@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JWTPayload } from '../utils/jwt';
 
+type DevBypassUser = JWTPayload & { uid: string };
+
 /**
  * Extend Express Request to include user data
  */
@@ -12,6 +14,23 @@ declare global {
   }
 }
 
+function applyDevelopmentBypass(req: Request, next: NextFunction): boolean {
+  const authHeader = req.headers.authorization;
+
+  if (process.env.NODE_ENV === 'development' && authHeader === 'Bearer dev-bypass-token') {
+    req.user = {
+      uid: 'dev-user-id',
+      userId: 'dev-user-id',
+      email: 'dev@athleteiq.local',
+      role: 'ADMIN',
+    } as DevBypassUser;
+    next();
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Authentication middleware
  * Validates JWT from cookies or Authorization header
@@ -19,6 +38,10 @@ declare global {
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   try {
+    if (applyDevelopmentBypass(req, next)) {
+      return;
+    }
+
     let token: string | undefined;
 
     // Try to get token from Authorization header (Bearer token)
@@ -74,6 +97,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  */
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
   try {
+    if (applyDevelopmentBypass(req, next)) {
+      return;
+    }
+
     let token: string | undefined;
 
     const authHeader = req.headers.authorization;

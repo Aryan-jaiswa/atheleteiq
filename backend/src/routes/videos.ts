@@ -6,6 +6,16 @@ import * as videosController from './videos.controller';
 const router = Router();
 
 /**
+ * GET /api/videos
+ * Get videos for the authenticated athlete
+ */
+router.get(
+  '/',
+  authMiddleware,
+  videosController.getMyVideos
+);
+
+/**
  * POST /api/videos/upload-url
  * Create upload session and return signed URL
  * Auth: ATHLETE role required

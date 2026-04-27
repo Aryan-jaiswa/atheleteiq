@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSignedUrl } from '../config/gcs';
-import { addVideoProcessingJob } from '../config/queue';
+import { enqueueVideoProcessing } from '../config/queue';
 
 const prisma = new PrismaClient();
 
@@ -94,6 +94,8 @@ export async function confirmUpload(req: ConfirmUploadRequest): Promise<{
   videoId: string;
   status: string;
   jobId: string;
+  queued: boolean;
+  reason?: string;
 }> {
   const { videoId } = req;
 
@@ -111,16 +113,8 @@ export async function confirmUpload(req: ConfirmUploadRequest): Promise<{
     throw new Error(`Cannot confirm upload for video with status: ${video.status}`);
   }
 
-  // Update status to EXTRACTING_FRAMES
-  const updatedVideo = await prisma.video.update({
-    where: { id: videoId },
-    data: {
-      status: 'EXTRACTING_FRAMES',
-    },
-  });
-
-  // Queue video processing job
-  await addVideoProcessingJob(
+  const queueResult = await enqueueVideoProcessing(
+    videoId,
     {
       videoId,
       gcsUrl: video.gcsRawUrl,
@@ -131,10 +125,20 @@ export async function confirmUpload(req: ConfirmUploadRequest): Promise<{
     1 // normal priority
   );
 
+  const updatedVideo = await prisma.video.update({
+    where: { id: videoId },
+    data: {
+      status: queueResult.queued ? 'EXTRACTING_FRAMES' : video.status,
+      errorMessage: queueResult.queued ? null : queueResult.reason || 'Redis unavailable',
+    },
+  });
+
   return {
     videoId,
     status: updatedVideo.status,
     jobId: videoId, // Using videoId as job tracking identifier
+    queued: queueResult.queued,
+    ...(queueResult.reason ? { reason: queueResult.reason } : {}),
   };
 }
 

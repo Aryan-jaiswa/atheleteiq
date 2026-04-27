@@ -430,3 +430,10 @@ def combine_injury_scores(ml_score: float, gemini_score: float) -> float:
     """
     combined = (ml_score * 0.4) + (gemini_score * 0.6)
     return float(min(100, max(0, combined)))
+
+
+if __name__ == "__main__":
+    models_dir = Path(__file__).parent / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    InjuryRiskPredictor()
+    print("Model trained and saved to models/")

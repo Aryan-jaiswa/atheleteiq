@@ -16,6 +16,36 @@ async function getAthleteProfileIdFromUser(userId?: string) {
 }
 
 /**
+ * GET /api/videos
+ * Get videos for the authenticated athlete
+ */
+export async function getMyVideos(req: Request, res: Response) {
+  try {
+    const athleteId = await getAthleteProfileIdFromUser(req.user?.userId);
+
+    if (!athleteId) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    const result = await videoService.getAthleteVideos(athleteId);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('Error getting current athlete videos:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get videos',
+    });
+  }
+}
+
+/**
  * POST /api/videos/upload-url
  * Create upload session and return signed URL
  */
@@ -110,6 +140,7 @@ export async function confirmUpload(req: Request, res: Response) {
     res.status(200).json({
       success: true,
       data: result,
+      queued: result.queued,
     });
   } catch (error: any) {
     console.error('Error confirming upload:', error);

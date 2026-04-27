@@ -60,6 +60,8 @@ docker-data/
 .cache/
 .tmp/
 temp/
+__pycache__/
+*.py[cod]
 
 # ----------------------
 # Testing

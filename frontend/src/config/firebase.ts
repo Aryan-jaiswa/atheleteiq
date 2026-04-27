@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -18,13 +18,18 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   );
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
 
-// Initialize Firebase Authentication
-export const auth = getAuth(app);
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
 
-// Configure auth settings
-auth.settings.appVerificationDisabledForTesting = process.env.NODE_ENV === 'development';
+  // Configure auth settings
+  auth.settings.appVerificationDisabledForTesting = process.env.NODE_ENV === 'development';
+} catch (error) {
+  console.warn('Firebase initialization failed. Falling back to null app/auth exports.', error);
+}
 
+export { app, auth };
 export default app;

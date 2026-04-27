@@ -3,11 +3,14 @@
 import { useEffect, useState, useCallback, useContext, createContext, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Role } from '@prisma/client';
+import { auth } from '@/config/firebase';
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  uid?: string;
+  displayName?: string;
   phone?: string;
   role: Role;
   sport?: string;
@@ -34,6 +37,7 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isNewUser: boolean;
+  getToken: () => Promise<string | null>;
   login: (firebaseToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<AuthUser>) => Promise<void>;
@@ -43,6 +47,21 @@ export interface AuthContextType {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const isDevBypassEnabled =
+  process.env.NODE_ENV === 'development' &&
+  (process.env.NEXT_PUBLIC_API_URL?.includes('localhost') ?? false) &&
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'your-firebase-api-key';
+
+const devBypassUser: AuthUser = {
+  id: 'dev-user-id',
+  uid: 'dev-user-id',
+  name: 'Dev User',
+  displayName: 'Dev User',
+  email: 'dev@athleteiq.local',
+  role: Role.ADMIN,
+  createdAt: new Date(),
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch current user from /api/auth/me
   const fetchUser = useCallback(async () => {
+    if (isDevBypassEnabled) {
+      setUser(devBypassUser);
+      setIsNewUser(false);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
@@ -83,6 +109,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (firebaseToken: string) => {
       setIsLoading(true);
+
+      if (isDevBypassEnabled) {
+        setUser(devBypassUser);
+        setIsNewUser(false);
+        router.push('/dashboard');
+        setIsLoading(false);
+        return;
+      }
+
       try {
         // Call backend to verify Firebase token and get JWT
         const response = await fetch('/api/auth/verify', {
@@ -121,6 +156,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setIsLoading(true);
+
+    if (isDevBypassEnabled) {
+      setUser(null);
+      setIsNewUser(false);
+      router.push('/login');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
@@ -143,6 +187,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = useCallback(
     async (data: Partial<AuthUser>) => {
+      if (isDevBypassEnabled) {
+        const updatedUser = {
+          ...(user ?? devBypassUser),
+          ...data,
+        };
+
+        setUser(updatedUser);
+        setIsNewUser(false);
+        return updatedUser;
+      }
+
       try {
         const response = await fetch('/api/auth/me', {
           method: 'PUT',
@@ -167,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    []
+    [user]
   );
 
   const refetch = useCallback(async () => {
@@ -175,12 +230,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUser();
   }, [fetchUser]);
 
+  const getToken = useCallback(async (): Promise<string | null> => {
+    if (isDevBypassEnabled) {
+      return 'dev-bypass-token';
+    }
+
+    if (!auth?.currentUser) {
+      return null;
+    }
+
+    try {
+      return await auth.currentUser.getIdToken();
+    } catch (error) {
+      console.error('Failed to get auth token:', error);
+      return null;
+    }
+  }, []);
+
   const value: AuthContextType = {
     user,
     role: user?.role || null,
     isLoading,
     isAuthenticated: !!user,
     isNewUser,
+    getToken,
     login,
     logout,
     updateProfile,

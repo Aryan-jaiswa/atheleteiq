@@ -1,141 +1,220 @@
 'use client';
 
 import Link from 'next/link';
+import axios from 'axios';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
-export default function AthleteDashboard() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+type VideoItem = {
+  id: string;
+  title: string;
+  createdAt: string;
+  status: string;
+};
+
+function statusClasses(status: string) {
+  switch (status) {
+    case 'COMPLETE':
+      return 'bg-green-500/15 text-green-300 border-green-500/30';
+    case 'FAILED':
+      return 'bg-red-500/15 text-red-300 border-red-500/30';
+    default:
+      return 'bg-yellow-500/15 text-yellow-200 border-yellow-500/30';
+  }
+}
+
+export default function AthleteDashboardPage() {
+  const router = useRouter();
+  const { user, isLoading, getToken } = useAuth();
+  const [pageLoading, setPageLoading] = useState(true);
+  const [analysisSummary, setAnalysisSummary] = useState<any | null>(null);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    let active = true;
+
+    const loadDashboard = async () => {
+      setPageLoading(true);
+      const token = (await getToken()) ?? 'dev-bypass-token';
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [analysisResult, videosResult] = await Promise.allSettled([
+        axios.get(`${API_URL}/api/analysis/athlete/${user.id}`, { headers }),
+        axios.get(`${API_URL}/api/videos`, { headers }),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      if (analysisResult.status === 'fulfilled') {
+        setAnalysisSummary(analysisResult.value.data?.data ?? analysisResult.value.data ?? null);
+      } else {
+        setAnalysisSummary(null);
+      }
+
+      if (videosResult.status === 'fulfilled') {
+        const apiVideos = Array.isArray(videosResult.value.data?.data)
+          ? videosResult.value.data.data
+          : [];
+        setVideos(
+          apiVideos.map((video: any) => ({
+            id: video.id,
+            title: video.title ?? `${video.type ?? 'Video'} ${video.sport ?? ''}`.trim(),
+            createdAt: video.createdAt ?? video.uploadedAt ?? '',
+            status: video.status ?? 'UNKNOWN',
+          }))
+        );
+      } else {
+        setVideos([]);
+      }
+
+      setPageLoading(false);
+    };
+
+    loadDashboard();
+
+    return () => {
+      active = false;
+    };
+  }, [getToken, isLoading, router, user]);
+
+  const stats = useMemo(() => {
+    const latestVideo = videos[0];
+    const latestRiskScore =
+      analysisSummary?.latestRiskScore ??
+      analysisSummary?.injuryRisk?.riskScore ??
+      analysisSummary?.injury_risk?.risk_score ??
+      null;
+    const avgSymmetryScore =
+      analysisSummary?.avgSymmetryScore ??
+      analysisSummary?.symmetryScore ??
+      analysisSummary?.biomechanics?.metrics?.symmetry_score ??
+      null;
+
+    return [
+      { label: 'Total Videos', value: String(videos.length) },
+      { label: 'Latest Risk Score', value: latestRiskScore ?? '--' },
+      { label: 'Avg Symmetry Score', value: avgSymmetryScore ?? '--' },
+      { label: 'Analysis Status', value: latestVideo?.status ?? '--' },
+    ];
+  }, [analysisSummary, videos]);
+
+  if (isLoading || pageLoading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-center">
+        <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/10 border-t-cyan-400"></div>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <Link href="/" className="text-cyan-400 hover:text-cyan-300 mb-8 inline-block animate-fade-in">← Home</Link>
-        
-        <div className="mb-12 animate-fade-in delay-100">
-          <h1 className="text-5xl font-black mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            🏃 Athlete Dashboard
-          </h1>
-          <p className="text-gray-300">Track your performance and improve your game</p>
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-cyan-300">Athlete Dashboard</p>
+            <h1 className="mt-2 text-4xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              Welcome back, {user.displayName || user.name || 'Athlete'}
+            </h1>
+          </div>
+          <span className="inline-flex w-fit items-center rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200">
+            ATHLETE
+          </span>
         </div>
 
-        {/* Profile Card */}
-        <div className="backdrop-blur-md bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-xl p-8 mb-12 animate-fade-in delay-200">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-3xl font-bold">Alex Runner</h2>
-              <p className="text-gray-300">Track & Field • Sprint</p>
+        <div className="mb-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-lg border border-white/10 bg-white/5 p-5 backdrop-blur-md"
+            >
+              <p className="text-sm text-gray-400">{stat.label}</p>
+              <p className="mt-3 text-3xl font-bold">{stat.value}</p>
             </div>
-            <div className="text-center">
-              <div className="text-lg text-gray-400">Overall Score</div>
-              <div className="text-5xl font-bold text-cyan-400">8.9/10</div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Performance Metrics */}
-          <div className="lg:col-span-2 animate-fade-in delay-300">
-            <h2 className="text-2xl font-bold mb-6">Performance Metrics</h2>
-            <div className="space-y-4">
-              {[
-                { label: 'Speed', value: 92 },
-                { label: 'Endurance', value: 85 },
-                { label: 'Agility', value: 88 },
-                { label: 'Power', value: 90 },
-              ].map((metric, i) => (
-                <div key={i}>
-                  <div className="flex justify-between mb-2">
-                    <span className="font-semibold">{metric.label}</span>
-                    <span className="text-cyan-400">{metric.value}/100</span>
-                  </div>
-                  <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
-                      style={{ width: `${metric.value}%`, animationDelay: `${i * 100}ms` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_320px]">
+          <section className="rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-md">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Recent Videos</h2>
+              <span className="text-sm text-gray-400">{videos.length} total</span>
             </div>
-          </div>
 
-          {/* Recent Activities */}
-          <div className="animate-fade-in delay-400">
-            <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
-            <div className="space-y-3">
-              {[
-                { date: 'Today', action: 'Uploaded training video', icon: '📤' },
-                { date: 'Yesterday', action: 'Completed biomechanics analysis', icon: '✅' },
-                { date: '2 days ago', action: 'Injury risk report', icon: '⚠️' },
-              ].map((activity, i) => (
-                <div 
-                  key={i} 
-                  className="backdrop-blur-md bg-white/5 border border-white/10 rounded-lg p-3 hover:border-cyan-500/50 transition-all animate-fade-in"
-                  style={{ animationDelay: `${(i + 5) * 100}ms` }}
-                >
-                  <div className="flex items-start gap-2">
-                    <span>{activity.icon}</span>
-                    <div>
-                      <p className="font-semibold text-sm">{activity.action}</p>
-                      <p className="text-xs text-gray-400">{activity.date}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {videos.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/10 px-4 py-10 text-center text-gray-400">
+                No videos yet
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left">
+                  <thead className="text-sm text-gray-400">
+                    <tr className="border-b border-white/10">
+                      <th className="pb-3 pr-4 font-medium">Video Name</th>
+                      <th className="pb-3 pr-4 font-medium">Upload Date</th>
+                      <th className="pb-3 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {videos.map((video) => (
+                      <tr key={video.id} className="border-b border-white/5 last:border-b-0">
+                        <td className="py-4 pr-4 font-medium">{video.title || '--'}</td>
+                        <td className="py-4 pr-4 text-sm text-gray-300">
+                          {video.createdAt ? new Date(video.createdAt).toLocaleString() : '--'}
+                        </td>
+                        <td className="py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClasses(
+                              video.status
+                            )}`}
+                          >
+                            {video.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <aside className="rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-md">
+            <h2 className="text-2xl font-bold">Quick Actions</h2>
+            <div className="mt-6 space-y-3">
+              <Link
+                href="/upload"
+                className="flex items-center justify-center rounded-lg bg-cyan-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400"
+              >
+                Upload New Video
+              </Link>
+              <Link
+                href="/reports"
+                className="flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 py-3 font-semibold text-white transition hover:border-cyan-400/40 hover:bg-white/10"
+              >
+                View Reports
+              </Link>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </main>
-  );
-}
-                <p className="text-gray-800 font-semibold">{user?.region || 'Not specified'}</p>
-              </div>
-              {user?.athleteProfile?.overallScore && (
-                <div>
-                  <p className="text-gray-600 text-sm">Overall Score</p>
-                  <p className="text-gray-800 font-semibold">
-                    {user.athleteProfile.overallScore.toFixed(1)}/100
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Link href="/dashboard/athlete/upload">
-              <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                <div className="text-3xl mb-3">📹</div>
-                <h3 className="text-lg font-bold text-gray-800">Upload Video</h3>
-                <p className="text-gray-600 text-sm mt-2">Submit new training or match footage for analysis</p>
-              </div>
-            </Link>
-
-            <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="text-3xl mb-3">📊</div>
-              <h3 className="text-lg font-bold text-gray-800">View Analysis</h3>
-              <p className="text-gray-600 text-sm mt-2">Check your biomechanics and AI-powered insights</p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="text-3xl mb-3">📈</div>
-              <h3 className="text-lg font-bold text-gray-800">Track Progress</h3>
-              <p className="text-gray-600 text-sm mt-2">Monitor your performance metrics over time</p>
-            </div>
-          </div>
-
-          {/* Recent Videos */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Videos</h2>
-            <div className="text-center py-8 text-gray-500">
-              <p>No videos uploaded yet</p>
-              <Link href="/dashboard/athlete/upload">
-                <button className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                  Upload Your First Video
-                </button>
-              </Link>
-            </div>
-          </div>
-        </main>
-      </div>
-    </RoleGuard>
   );
 }
